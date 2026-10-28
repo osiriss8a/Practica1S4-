@@ -1,21 +1,59 @@
+
 <?php
-require_once "conexion.php";
+require_once __DIR__ . '/partes/sesion.php';
+require_once __DIR__ . '/conexion.php';
 
 /* =========================
-   OBTENER ID
+   OBTENER USUARIO E ID
    ========================= */
-$id = isset($_GET["id"])
-    ? (int) $_GET["id"]
+$usuarioId = (int) $_SESSION['uid'];
+
+$id = isset($_GET['id'])
+    ? (int) $_GET['id']
     : 0;
+
 if ($id <= 0) {
     header("Location: agenda.php");
     exit;
 }
 
 /* =========================
+   BUSCAR EVENTO PROPIO
+   ========================= */
+$sql = "SELECT
+            eventos.id,
+            eventos.titulo,
+            eventos.cliente,
+            eventos.fecha,
+            eventos.hora,
+            eventos.categoria_id,
+            categorias.nombre AS categoria,
+            eventos.ubicacion,
+            eventos.descripcion
+        FROM eventos
+        INNER JOIN categorias
+            ON eventos.categoria_id = categorias.id
+        WHERE eventos.id = :id
+          AND eventos.usuario_id = :usuario_id";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute([
+    ':id' => $id,
+    ':usuario_id' => $usuarioId
+]);
+
+$evento = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$evento) {
+    http_response_code(404);
+    exit("El evento no existe o no tienes permiso para editarlo.");
+}
+
+/* =========================
    ACTUALIZAR EVENTO
    ========================= */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
     $titulo = trim($_POST["titulo"] ?? "");
     $cliente = trim($_POST["cliente"] ?? "");
     $fecha = $_POST["fecha"] ?? "";
@@ -41,21 +79,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         die("La hora es obligatoria.");
     }
 
-
-    if ($categoriaId <= 0) {
-    die("La categoría seleccionada no es válida.");
-    }
-
-    $stmt = $pdo->prepare(
-    "SELECT COUNT(*) FROM categorias WHERE id = :id"
+    /* VALIDAR CATEGORÍA */
+    $stmtCategoria = $pdo->prepare(
+        "SELECT COUNT(*) FROM categorias WHERE id = :id"
     );
-    $stmt->execute([":id" => $categoriaId]);
 
-    if (!$stmt->fetchColumn()) {
-    die("La categoría seleccionada no existe.");
+    $stmtCategoria->execute([
+        ':id' => $categoriaId
+    ]);
+
+    if (!$stmtCategoria->fetchColumn()) {
+        die("La categoría seleccionada no es válida.");
     }
 
-    /* ACTUALIZAR */
+    /* ACTUALIZAR SOLO SI PERTENECE AL USUARIO */
     $sql = "UPDATE eventos
             SET titulo = :titulo,
                 cliente = :cliente,
@@ -64,52 +101,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 categoria_id = :categoria_id,
                 ubicacion = :ubicacion,
                 descripcion = :descripcion
-            WHERE id = :id";
+            WHERE id = :id
+              AND usuario_id = :usuario_id";
+
     $stmt = $pdo->prepare($sql);
 
     $stmt->execute([
-        ":titulo" => $titulo,
-        ":cliente" => $cliente,
-        ":fecha" => $fecha,
-        ":hora" => $hora,
-        ":categoria_id" => $categoriaId,
-        ":ubicacion" => $ubicacion,
-        ":descripcion" => $descripcion,
-        ":id" => $id
+        ':titulo' => $titulo,
+        ':cliente' => $cliente,
+        ':fecha' => $fecha,
+        ':hora' => $hora,
+        ':categoria_id' => $categoriaId,
+        ':ubicacion' => $ubicacion,
+        ':descripcion' => $descripcion,
+        ':id' => $id,
+        ':usuario_id' => $usuarioId
     ]);
 
-    header("Location: agenda.php");
+    header("Location: agenda.php?actualizado=1");
     exit;
 }
-
-/* =========================
-   BUSCAR EVENTO
-   ========================= */
-$sql = "SELECT
-            eventos.id,
-            eventos.titulo,
-            eventos.cliente,
-            eventos.fecha,
-            eventos.hora,
-            eventos.categoria_id,
-            categorias.nombre AS categoria,
-            eventos.ubicacion,
-            eventos.descripcion
-        FROM eventos
-        INNER JOIN categorias
-            ON eventos.categoria_id = categorias.id
-        WHERE eventos.id = :id";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute([
-    ":id" => $id
-]);
-
-$evento = $stmt->fetch();
-if (!$evento) {
-    die("El evento no existe.");
-}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="es">

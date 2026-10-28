@@ -1,8 +1,15 @@
+
 <?php
-require_once "conexion.php";
+require_once __DIR__ . '/partes/sesion.php';
+require_once __DIR__ . '/conexion.php';
 
 /* =========================
-   OBTENER EVENTOS
+   OBTENER USUARIO ACTUAL
+   ========================= */
+$usuarioId = (int) $_SESSION['uid'];
+
+/* =========================
+   OBTENER SOLO SUS EVENTOS
    ========================= */
 $sql = "SELECT
     eventos.id,
@@ -15,10 +22,15 @@ $sql = "SELECT
     eventos.descripcion
     FROM eventos
     INNER JOIN categorias
-    ON eventos.categoria_id = categorias.id
+        ON eventos.categoria_id = categorias.id
+    WHERE eventos.usuario_id = :usuario_id
     ORDER BY eventos.fecha, eventos.hora";
 
-$stmt = $pdo->query($sql);
+$stmt = $pdo->prepare($sql);
+$stmt->execute([
+    ':usuario_id' => $usuarioId
+]);
+
 $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -49,12 +61,14 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body>
+
     <!-- DECORACIÓN -->
     <div class="glow glow-1"></div>
     <div class="glow glow-2"></div>
 
     <!-- ================= SIDEBAR ================= -->
     <aside class="sidebar">
+
         <!-- LOGO -->
         <div class="brand">
             <div class="brand-icon">
@@ -65,32 +79,20 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <h2>
                     Agenda<span>Web</span>
                 </h2>
-                <p>
-                    Organiza tus momentos
-                </p>
+                <p>Organiza tus momentos</p>
             </div>
         </div>
 
         <!-- MENÚ -->
         <nav class="menu">
-            <a
-                href="index.html"
-                class="menu-item"
-            >
+            <a href="index.php" class="menu-item">
                 <i class="fa-solid fa-house"></i>
-                <span>
-                    Inicio
-                </span>
+                <span>Inicio</span>
             </a>
 
-            <a
-                href="agenda.php"
-                class="menu-item active"
-            >
+            <a href="agenda.php" class="menu-item active">
                 <i class="fa-solid fa-calendar-days"></i>
-                <span>
-                    Mi Agenda
-                </span>
+                <span>Mi Agenda</span>
             </a>
         </nav>
 
@@ -106,25 +108,37 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- PIE -->
         <div class="sidebar-footer">
             <i class="fa-solid fa-heart"></i>
-            <span>
-                AgendaWeb
-            </span>
+            <span>AgendaWeb</span>
         </div>
+
     </aside>
 
     <!-- ================= CONTENIDO PRINCIPAL ================= -->
     <main class="main">
+
         <!-- TOPBAR -->
         <header class="topbar">
+
             <div class="usuario">
                 <div class="avatar">
-                    <i class="fa-solid fa-calendar-check"></i>
+                    <i class="fa-solid fa-user"></i>
                 </div>
 
                 <span>
-                    Mi Agenda
+                    Mi Agenda —
+                    <?= htmlspecialchars(
+                        $_SESSION['nombre'] ?? 'Usuario',
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
                 </span>
             </div>
+
+            <a href="logout.php" class="btn-guardar">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                Cerrar sesión
+            </a>
+
         </header>
 
         <!-- ================= MI AGENDA ================= -->
@@ -132,15 +146,14 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- ENCABEZADO -->
             <section class="agenda-encabezado">
+
                 <div class="agenda-titulo">
                     <p class="etiqueta">
                         <i class="fa-solid fa-calendar-check"></i>
                         MIS EVENTOS
                     </p>
 
-                    <h2>
-                        Mi Agenda
-                    </h2>
+                    <h2>Mi Agenda</h2>
 
                     <p class="texto-inicio">
                         Aquí puedes consultar, editar y eliminar tus eventos registrados.
@@ -148,66 +161,78 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
 
                 <div class="agenda-derecha">
+
                     <!-- CONTADOR -->
                     <div class="contador-eventos">
-                        <strong>
-                            <?= count($eventos) ?>
-                        </strong>
+                        <strong><?= count($eventos) ?></strong>
                         <span>
-                            eventos
+                            <?= count($eventos) === 1 ? 'evento' : 'eventos' ?>
                         </span>
                     </div>
 
                     <!-- NUEVO EVENTO -->
-                    <a
-                        href="index.html"
-                        class="btn-nuevo"
-                    >
+                    <a href="index.php" class="btn-nuevo">
                         <i class="fa-solid fa-plus"></i>
                         Nuevo evento
                     </a>
+
                 </div>
             </section>
 
-            <!-- ================= MENSAJE ================= -->
+            <!-- ================= MENSAJES ================= -->
+
             <?php if (isset($_GET["guardado"])): ?>
                 <div class="mensaje-exito">
                     <i class="fa-solid fa-circle-check"></i>
-                    <span>
-                        ¡Evento guardado correctamente!
-                    </span>
+                    <span>¡Evento guardado correctamente!</span>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET["actualizado"])): ?>
+                <div class="mensaje-exito">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>¡Evento actualizado correctamente!</span>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET["eliminado"])): ?>
+                <div class="mensaje-exito">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>¡Evento eliminado correctamente!</span>
                 </div>
             <?php endif; ?>
 
             <!-- ================= EVENTOS ================= -->
+
             <?php if (count($eventos) === 0): ?>
+
                 <!-- AGENDA VACÍA -->
                 <section class="agenda-vacia">
+
                     <div class="agenda-vacia-icon">
                         <i class="fa-regular fa-calendar-xmark"></i>
                     </div>
 
-                    <h3>
-                        No tienes eventos todavía
-                    </h3>
+                    <h3>No tienes eventos todavía</h3>
 
                     <p>
                         Comienza agregando tu primer evento a la agenda.
                     </p>
 
-                    <a
-                        href="index.html"
-                        class="btn-guardar"
-                    >
+                    <a href="index.php" class="btn-guardar">
                         <i class="fa-solid fa-plus"></i>
                         Crear evento
                     </a>
+
                 </section>
 
             <?php else: ?>
+
                 <!-- GRID DE EVENTOS -->
                 <section class="eventos-grid">
+
                     <?php foreach ($eventos as $evento): ?>
+
                         <article class="evento-card">
 
                             <!-- ICONO -->
@@ -217,6 +242,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                             <!-- INFORMACIÓN -->
                             <div class="evento-contenido">
+
                                 <!-- TÍTULO -->
                                 <h3>
                                     <?= htmlspecialchars(
@@ -241,16 +267,18 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
 
                                 <!-- FECHA -->
-                                <div class="evento-fecha">
-                                    <i class="fa-regular fa-calendar"></i>
-                                    <span>
-                                        <?= htmlspecialchars(
-                                            $evento["fecha"],
-                                            ENT_QUOTES,
-                                            "UTF-8"
-                                        ) ?>
-                                    </span>
-                                </div>
+                                <?php if (!empty($evento["fecha"])): ?>
+                                    <div class="evento-fecha">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        <span>
+                                            <?= htmlspecialchars(
+                                                $evento["fecha"],
+                                                ENT_QUOTES,
+                                                "UTF-8"
+                                            ) ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
 
                                 <!-- HORA -->
                                 <?php if (!empty($evento["hora"])): ?>
@@ -315,7 +343,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                                     <!-- EDITAR -->
                                     <a
-                                        href="editar.php?id=<?= $evento["id"] ?>"
+                                        href="editar.php?id=<?= (int) $evento["id"] ?>"
                                         class="btn-editar"
                                     >
                                         <i class="fa-solid fa-pen"></i>
@@ -331,8 +359,9 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <input
                                             type="hidden"
                                             name="id"
-                                            value="<?= $evento["id"] ?>"
+                                            value="<?= (int) $evento["id"] ?>"
                                         >
+
                                         <button
                                             type="submit"
                                             class="btn-eliminar"
@@ -341,12 +370,18 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             Eliminar
                                         </button>
                                     </form>
+
                                 </div>
+
                             </div>
                         </article>
+
                     <?php endforeach; ?>
+
                 </section>
+
             <?php endif; ?>
+
         </div>
 
         <!-- FOOTER -->
@@ -354,6 +389,8 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <i class="fa-solid fa-heart"></i>
             AgendaWeb · Organiza tu tiempo
         </footer>
+
     </main>
+
 </body>
 </html>

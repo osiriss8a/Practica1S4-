@@ -1,22 +1,13 @@
+
 <?php
-require_once "conexion.php";
+require_once __DIR__ . '/partes/sesion.php';
+require_once __DIR__ . '/conexion.php';
 
 /* =========================
-   CARGAR CATEGORÍAS
+   VERIFICAR MÉTODO
    ========================= */
-$resultado = $pdo->query(
-    "SELECT id, nombre FROM categorias ORDER BY nombre"
-);
-
-$categorias = $resultado->fetchAll(PDO::FETCH_ASSOC);
-
-$idsValidos = array_map(
-    'intval',
-    array_column($categorias, 'id')
-);
-
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    header("Location: index.html");
+    header("Location: index.php");
     exit;
 }
 
@@ -32,7 +23,7 @@ $ubicacion = trim($_POST["ubicacion"] ?? "");
 $descripcion = trim($_POST["descripcion"] ?? "");
 
 /* =========================
-   VALIDACIONES
+   VALIDAR CAMPOS
    ========================= */
 if ($titulo === "") {
     die("El título es obligatorio.");
@@ -53,17 +44,29 @@ if ($hora === "") {
 /* =========================
    VALIDAR CATEGORÍA
    ========================= */
-if (!in_array($categoriaId, $idsValidos, true)) {
+$stmtCategoria = $pdo->prepare(
+    "SELECT id FROM categorias WHERE id = ?"
+);
+$stmtCategoria->execute([$categoriaId]);
+
+if (!$stmtCategoria->fetch(PDO::FETCH_ASSOC)) {
     die("La categoría seleccionada no es válida.");
 }
 
 /* =========================
-   INSERTAR EN MYSQL
+   OBTENER USUARIO ACTUAL
+   ========================= */
+$usuarioId = (int) $_SESSION['uid'];
+
+/* =========================
+   INSERTAR EVENTO
    ========================= */
 $sql = "INSERT INTO eventos
-        (titulo, cliente, fecha, hora, categoria_id, ubicacion, descripcion)
+        (titulo, cliente, fecha, hora, categoria_id,
+         ubicacion, descripcion, usuario_id)
         VALUES
-        (:titulo, :cliente, :fecha, :hora, :categoria_id, :ubicacion, :descripcion)";
+        (:titulo, :cliente, :fecha, :hora, :categoria_id,
+         :ubicacion, :descripcion, :usuario_id)";
 
 $stmt = $pdo->prepare($sql);
 
@@ -74,7 +77,8 @@ $stmt->execute([
     ":hora" => $hora,
     ":categoria_id" => $categoriaId,
     ":ubicacion" => $ubicacion,
-    ":descripcion" => $descripcion
+    ":descripcion" => $descripcion,
+    ":usuario_id" => $usuarioId
 ]);
 
 /* =========================

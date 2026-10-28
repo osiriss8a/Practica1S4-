@@ -1,11 +1,15 @@
+
 <?php
-require_once "conexion.php";
+require_once __DIR__ . '/partes/sesion.php';
+require_once __DIR__ . '/conexion.php';
 
 $resultado = $pdo->query(
     "SELECT id, nombre FROM categorias ORDER BY nombre"
 );
 
 $categorias = $resultado->fetchAll(PDO::FETCH_ASSOC);
+
+require __DIR__ . '/partes/sesion.php';
 ?>
 
 <!DOCTYPE html>
@@ -99,16 +103,24 @@ $categorias = $resultado->fetchAll(PDO::FETCH_ASSOC);
     <!-- ================= CONTENIDO PRINCIPAL ================= -->
     <main class="main">
         <!-- TOPBAR -->
-        <header class="topbar">
-            <div class="usuario">
-                <div class="avatar">
-                    <i class="fa-solid fa-user"></i>
+       
+            <header class="topbar">
+                <div class="usuario">
+                    <div class="avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span>
+                        Bienvenido,
+                        <?= htmlspecialchars($_SESSION['nombre'] ?? 'Usuario', ENT_QUOTES, 'UTF-8') ?>
+                    </span>
                 </div>
-                <span>
-                    Mi Agenda
-                </span>
-            </div>
-        </header>
+
+                <a href="logout.php" class="btn-guardar">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    Cerrar sesión
+                </a>
+            </header>
+
 
         <!-- ================= INICIO ================= -->
         <div class="inicio-contenido">

@@ -1,5 +1,4 @@
-CREATE DATABASE IF NOT EXISTS agenda;
-USE agenda;
+
 
 CREATE TABLE categorias (
     id INT NOT NULL AUTO_INCREMENT,
